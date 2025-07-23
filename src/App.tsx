@@ -20,14 +20,17 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
-          <div className="min-h-screen flex w-full">
+          <div className="min-h-screen flex w-full animate-fade-in">
             <AppSidebar />
             <div className="flex-1 flex flex-col">
-              <header className="h-14 flex items-center border-b border-border/50 glass-card m-2 mb-0">
-                <SidebarTrigger className="ml-2" />
-                <h1 className="ml-4 font-semibold">Waterpark Inventory Management</h1>
+              <header className="h-16 flex items-center border-b border-border/30 glass-card m-3 mb-0 shadow-soft">
+                <SidebarTrigger className="ml-4 hover-lift" />
+                <div className="ml-6">
+                  <h1 className="font-display font-semibold text-lg text-gradient">AquaManager</h1>
+                  <p className="text-xs text-muted-foreground">Waterpark Inventory Management</p>
+                </div>
               </header>
-              <main className="flex-1 p-2">
+              <main className="flex-1 p-3 overflow-auto" style={{scrollBehavior: 'smooth'}}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/products" element={<Products />} />
