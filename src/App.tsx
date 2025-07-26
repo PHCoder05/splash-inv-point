@@ -8,7 +8,7 @@ import { AppSidebar } from "./components/AppSidebar";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Inventory from "./pages/Inventory";
-import POS from "./pages/POS";
+import InventoryUsage from "./pages/InventoryUsage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,7 +35,7 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/inventory" element={<Inventory />} />
-                  <Route path="/pos" element={<POS />} />
+                  <Route path="/inventory-usage" element={<InventoryUsage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

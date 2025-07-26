@@ -10,57 +10,107 @@ import { Search, Download, Package, ShoppingCart, Calendar } from "lucide-react"
 const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Sample data for purchase orders
-  const purchases = [
+  // Sample data for inventory items
+  const inventoryItems = [
     {
-      id: "PO001",
-      date: "2025-01-20",
-      description: "Pool Noodles",
-      qty: 50,
-      unit: "PCS",
-      rate: 5.99,
-      vendor: "AquaSupplies Inc",
-      person: "John Smith",
-      department: "Pool Operations",
-      status: "Received"
+      id: 1,
+      purchase: {
+        description: "16\" Wall Fan CG",
+        qty: 5,
+        unit: "NOS",
+        rate: 1950.00,
+        date: "1/4/25",
+        vendor: "M.M Switchgear",
+        person: "Vikrant",
+        department: "Funworld"
+      },
+      issued: {
+        date: "2/4/25",
+        description: "16\" Wall Fan CG",
+        unit: "Nos",
+        qty: 2,
+        issuedTo: "Staff Dinning"
+      }
     },
     {
-      id: "PO002", 
-      date: "2025-01-19",
-      description: "Sunscreen SPF 50",
-      qty: 30,
-      unit: "BTL",
-      rate: 12.99,
-      vendor: "SafeSun Products",
-      person: "Sarah Johnson",
-      department: "Guest Services",
-      status: "Pending"
-    }
-  ];
-
-  // Sample data for issued items
-  const issuedItems = [
-    {
-      id: "IS001",
-      date: "2025-01-20",
-      description: "Pool Towels",
-      qty: 15,
-      unit: "PCS",
-      issuedTo: "Lifeguard Station A",
-      person: "Mike Wilson",
-      department: "Safety",
-      status: "Completed"
+      id: 2,
+      purchase: {
+        description: "400mm x 7.6mm Cable Ties",
+        qty: 6,
+        unit: "Pkt",
+        rate: 390.00,
+        date: "1/4/25",
+        vendor: "M.M Switchgear",
+        person: "Vikrant",
+        department: "waterworld"
+      },
+      issued: {
+        date: "3/4/25",
+        description: "530mm X 7.6mm Cable Ties",
+        unit: "pkt",
+        qty: 1,
+        issuedTo: "rain dance"
+      }
     },
     {
-      id: "IS002",
-      date: "2025-01-20", 
-      description: "Pool Floats",
-      qty: 8,
-      unit: "PCS",
-      issuedTo: "Kids Pool Area",
-      person: "Lisa Chen",
-      department: "Recreation",
-      status: "In Progress"
+      id: 3,
+      purchase: {
+        description: "530mm X 7.6mm Cable Ties",
+        qty: 2,
+        unit: "PKT",
+        rate: 525.00,
+        date: "2/4/25",
+        vendor: "M.M Switchgear",
+        person: "",
+        department: ""
+      },
+      issued: {
+        date: "",
+        description: "",
+        unit: "",
+        qty: null,
+        issuedTo: ""
+      }
+    },
+    {
+      id: 4,
+      purchase: {
+        description: "LED Rope Light Serial Set",
+        qty: 3,
+        unit: "Box",
+        rate: 8675.00,
+        date: "4/4/25",
+        vendor: "M.M Switchgear",
+        person: "",
+        department: ""
+      },
+      issued: {
+        date: "",
+        description: "",
+        unit: "",
+        qty: null,
+        issuedTo: ""
+      }
+    },
+    {
+      id: 5,
+      purchase: {
+        description: "Spare Adaptor for LED Rope",
+        qty: 4,
+        unit: "Nos",
+        rate: 180.00,
+        date: "4/4/25",
+        vendor: "M.M Switchgear",
+        person: "",
+        department: ""
+      },
+      issued: {
+        date: "",
+        description: "",
+        unit: "",
+        qty: null,
+        issuedTo: ""
+      }
     }
   ];
 
@@ -86,32 +136,28 @@ const Inventory = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="purchases" className="space-y-4">
+      <Tabs defaultValue="inventory" className="space-y-4">
         <TabsList className="glass">
-          <TabsTrigger value="purchases" className="flex items-center gap-2">
+          <TabsTrigger value="inventory" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Purchase Orders
-          </TabsTrigger>
-          <TabsTrigger value="issued" className="flex items-center gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            Issued Items
+            Inventory Management
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="purchases">
+        <TabsContent value="inventory">
           <Card className="glass border-0">
             <CardHeader>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <CardTitle>Purchase Orders</CardTitle>
+                  <CardTitle>Inventory Management</CardTitle>
                   <CardDescription>
-                    Track incoming inventory and purchase history
+                    Track purchase orders and issued items
                   </CardDescription>
                 </div>
                 <div className="relative w-full sm:w-auto">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search purchases..."
+                    placeholder="Search inventory..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 w-full sm:w-64"
@@ -124,96 +170,54 @@ const Inventory = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Sl.No</TableHead>
-                      <TableHead>Description of Goods</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Rate ($)</TableHead>
-                      <TableHead>Unit/Measurement</TableHead>
-                      <TableHead>Vendor Name</TableHead>
-                      <TableHead>Person</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableCell 
+                        colSpan={8} 
+                        className="text-center font-bold bg-primary/10 border"
+                      >
+                        Purchase of Item
+                      </TableCell>
+                      <TableCell 
+                        colSpan={5} 
+                        className="text-center font-bold bg-secondary/10 border"
+                      >
+                        Issued Items
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {purchases.map((purchase, index) => (
-                      <TableRow key={purchase.id} className="hover:bg-primary/5">
-                        <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>{purchase.description}</TableCell>
-                        <TableCell>{purchase.date}</TableCell>
-                        <TableCell>{purchase.rate.toFixed(2)}</TableCell>
-                        <TableCell>{purchase.unit}</TableCell>
-                        <TableCell>{purchase.vendor}</TableCell>
-                        <TableCell>{purchase.person}</TableCell>
-                        <TableCell>{purchase.department}</TableCell>
-                        <TableCell className="font-medium">{purchase.qty}</TableCell>
-                        <TableCell>
-                          <Badge variant={purchase.status === "Received" ? "default" : "secondary"}>
-                            {purchase.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="issued">
-          <Card className="glass border-0">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <CardTitle>Issued Items</CardTitle>
-                  <CardDescription>
-                    Track items issued to departments and staff
-                  </CardDescription>
-                </div>
-                <div className="relative w-full sm:w-auto">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search issued items..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full sm:w-64"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
                     <TableRow>
-                      <TableHead>Sl.No</TableHead>
-                      <TableHead>Description of Goods</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Unit/Measurement</TableHead>
-                      <TableHead>Items Issued To</TableHead>
-                      <TableHead>Person</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="bg-primary/5">Description of Goods</TableHead>
+                      <TableHead className="bg-primary/5">Qty</TableHead>
+                      <TableHead className="bg-primary/5">Unit/Measurement</TableHead>
+                      <TableHead className="bg-primary/5">Rate</TableHead>
+                      <TableHead className="bg-primary/5">Date</TableHead>
+                      <TableHead className="bg-primary/5">Vendor Name</TableHead>
+                      <TableHead className="bg-primary/5">Person</TableHead>
+                      <TableHead className="bg-primary/5">Department</TableHead>
+                      <TableHead className="bg-secondary/5">Date</TableHead>
+                      <TableHead className="bg-secondary/5">Description of Goods</TableHead>
+                      <TableHead className="bg-secondary/5">Unit/Measurement</TableHead>
+                      <TableHead className="bg-secondary/5">Qty</TableHead>
+                      <TableHead className="bg-secondary/5">Item Issued It</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issuedItems.map((item, index) => (
+                    {inventoryItems.map((item) => (
                       <TableRow key={item.id} className="hover:bg-primary/5">
-                        <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>{item.date}</TableCell>
-                        <TableCell>{item.unit}</TableCell>
-                        <TableCell>{item.issuedTo}</TableCell>
-                        <TableCell>{item.person}</TableCell>
-                        <TableCell>{item.department}</TableCell>
-                        <TableCell className="font-medium">{item.qty}</TableCell>
-                        <TableCell>
-                          <Badge variant={item.status === "Completed" ? "default" : "secondary"}>
-                            {item.status}
-                          </Badge>
+                        <TableCell>{item.purchase.description}</TableCell>
+                        <TableCell className="font-medium">{item.purchase.qty}</TableCell>
+                        <TableCell>{item.purchase.unit}</TableCell>
+                        <TableCell>{item.purchase.rate.toFixed(2)}</TableCell>
+                        <TableCell>{item.purchase.date}</TableCell>
+                        <TableCell>{item.purchase.vendor}</TableCell>
+                        <TableCell>{item.purchase.person}</TableCell>
+                        <TableCell>{item.purchase.department}</TableCell>
+                        <TableCell className="bg-secondary/5">{item.issued.date}</TableCell>
+                        <TableCell className="bg-secondary/5">{item.issued.description}</TableCell>
+                        <TableCell className="bg-secondary/5">{item.issued.unit}</TableCell>
+                        <TableCell className="font-medium bg-secondary/5">{item.issued.qty}</TableCell>
+                        <TableCell className="bg-secondary/5">
+                          {item.issued.issuedTo && (
+                            <span>{item.issued.issuedTo}</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
