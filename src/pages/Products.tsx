@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Package, AlertTriangle } from "lucide-react";
+import { Search, Plus, Package, AlertTriangle, Loader2, Pencil, Trash2, Filter, Download, BarChart3, TrendingUp, CheckCircle, XCircle, MoreHorizontal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,91 +14,82 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { 
+  useProducts, 
+  useCategories, 
+  useVendors, 
+  useCreateProduct, 
+  useUpdateProduct,
+  useDeleteProduct,
+  useProductStockStatus 
+} from "@/hooks/useDatabase";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { CreateProductForm } from "@/types/database";
+import { formatCurrency } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 const Products = () => {
-  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<typeof products[0] | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState<any | null>(null);
+  const [stockFilter, setStockFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  
+  // Database queries
+  const { data: products, isLoading: productsLoading, error: productsError } = useProducts();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: vendors, isLoading: vendorsLoading } = useVendors();
+  const { data: stockStatus } = useProductStockStatus();
+  
+  // Mutations
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
   
   // Form state for add/edit product
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateProductForm>({
     description: "",
-    vendor: "",
-    category: "",
+    vendor_id: null,
+    category_id: "",
     unit: "",
     rate: 0,
     quantity: 0,
-    minStock: 0
+    min_stock: 0
   });
 
-  const products = [
-    {
-      id: 1,
-      description: "Pool Noodles",
-      vendor: "AquaSupplies Inc",
-      unit: "PCS",
-      rate: 5.99,
-      quantity: 150,
-      minStock: 50,
-      category: "Pool Equipment"
-    },
-    {
-      id: 2,
-      description: "Sunscreen SPF 50",
-      vendor: "SafeSun Products",
-      unit: "BTL",
-      rate: 12.99,
-      quantity: 45,
-      minStock: 20,
-      category: "Safety"
-    },
-    {
-      id: 3,
-      description: "Pool Towels",
-      vendor: "TextilePro",
-      unit: "PCS",
-      rate: 15.99,
-      quantity: 80,
-      minStock: 30,
-      category: "Amenities"
-    },
-    {
-      id: 4,
-      description: "Pool Floats",
-      vendor: "AquaSupplies Inc",
-      unit: "PCS",
-      rate: 25.99,
-      quantity: 12,
-      minStock: 15,
-      category: "Pool Equipment"
-    },
-    {
-      id: 5,
-      description: "Water Slides Maintenance Kit",
-      vendor: "MaintenancePro",
-      unit: "KIT",
-      rate: 89.99,
-      quantity: 5,
-      minStock: 3,
-      category: "Maintenance"
-    }
-  ];
-
-  // Available categories and vendors for dropdowns
-  const categories = ["Pool Equipment", "Safety", "Amenities", "Maintenance", "Cleaning", "Food & Beverage"];
-  const vendors = ["AquaSupplies Inc", "SafeSun Products", "TextilePro", "MaintenancePro", "M.M Switchgear", "HydroGoods"];
+  // Available units
   const units = ["PCS", "BTL", "KIT", "BOX", "PKT", "NOS", "KG", "LTR"];
 
-  const filteredProducts = products.filter(product =>
+  const filteredProducts = products?.filter(product =>
     product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.vendor.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    product.category?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.vendor?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   const getStockStatus = (quantity: number, minStock: number) => {
     if (quantity === 0) return { label: "Out of Stock", variant: "destructive" as const };
@@ -110,7 +101,7 @@ const Products = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: name === "rate" || name === "quantity" || name === "minStock" 
+      [name]: name === "rate" || name === "quantity" || name === "min_stock" 
         ? parseFloat(value) || 0 
         : value
     });
@@ -119,86 +110,103 @@ const Products = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value === "" ? null : value
     });
   };
 
-  const handleAddProduct = () => {
-    // Validate form
-    if (!formData.description || !formData.vendor || !formData.category || !formData.unit) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
+  const handleAddProduct = async () => {
+    if (!formData.description || !formData.vendor_id || !formData.category_id || !formData.unit) {
       return;
     }
 
-    // In a real app, this would make an API call to add the product
-    toast({
-      title: "Product Added",
-      description: `${formData.description} has been added to inventory`
-    });
-
-    // Reset form and close dialog
-    setFormData({
-      description: "",
-      vendor: "",
-      category: "",
-      unit: "",
-      rate: 0,
-      quantity: 0,
-      minStock: 0
-    });
-    setIsAddDialogOpen(false);
-  };
-
-  const handleEditProduct = () => {
-    if (!currentProduct) return;
-
-    // Validate form
-    if (!formData.description || !formData.vendor || !formData.category || !formData.unit) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+    try {
+      await createProductMutation.mutateAsync(formData);
+      setFormData({
+        description: "",
+        vendor_id: "",
+        category_id: "",
+        unit: "",
+        rate: 0,
+        quantity: 0,
+        min_stock: 0
       });
-      return;
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      // Error is handled by the mutation
     }
-
-    // In a real app, this would make an API call to update the product
-    toast({
-      title: "Product Updated",
-      description: `${formData.description} has been updated`
-    });
-
-    // Reset form and close dialog
-    setFormData({
-      description: "",
-      vendor: "",
-      category: "",
-      unit: "",
-      rate: 0,
-      quantity: 0,
-      minStock: 0
-    });
-    setCurrentProduct(null);
-    setIsEditDialogOpen(false);
   };
 
-  const openEditDialog = (product: typeof products[0]) => {
+  const handleEditProduct = (product: any) => {
     setCurrentProduct(product);
     setFormData({
       description: product.description,
-      vendor: product.vendor,
-      category: product.category,
+      vendor_id: product.vendor_id,
+      category_id: product.category_id,
       unit: product.unit,
       rate: product.rate,
       quantity: product.quantity,
-      minStock: product.minStock
+      min_stock: product.min_stock
     });
     setIsEditDialogOpen(true);
   };
+
+  const handleUpdateProduct = async () => {
+    if (!currentProduct || !formData.description || !formData.vendor_id || !formData.category_id || !formData.unit) {
+      return;
+    }
+
+    try {
+      await updateProductMutation.mutateAsync({
+        id: currentProduct.id,
+        data: formData
+      });
+      resetForm();
+      setIsEditDialogOpen(false);
+      setCurrentProduct(null);
+    } catch (error: any) {
+      // Error is handled by the mutation
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!currentProduct) return;
+
+    try {
+      await deleteProductMutation.mutateAsync(currentProduct.id);
+      setIsDeleteDialogOpen(false);
+      setCurrentProduct(null);
+    } catch (error: any) {
+      console.error("Failed to delete product:", error);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      description: "",
+      vendor_id: null,
+      category_id: "",
+      unit: "",
+      rate: 0,
+      quantity: 0,
+      min_stock: 0
+    });
+    setCurrentProduct(null);
+  };
+
+  if (productsError) {
+    return (
+      <div className="space-y-6">
+        <Card className="glass border-destructive/50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <p>Failed to load products. Please check your database connection.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -208,7 +216,10 @@ const Products = () => {
             <h1 className="text-3xl font-bold text-primary mb-2">Products</h1>
             <p className="text-muted-foreground">Manage your waterpark inventory products</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
@@ -240,16 +251,17 @@ const Products = () => {
                     Vendor*
                   </Label>
                   <Select
-                    value={formData.vendor}
-                    onValueChange={(value) => handleSelectChange("vendor", value)}
+                    value={formData.vendor_id}
+                    onValueChange={(value) => handleSelectChange("vendor_id", value)}
+                    disabled={vendorsLoading}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Select vendor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {vendors.map((vendor) => (
-                        <SelectItem key={vendor} value={vendor}>
-                          {vendor}
+                      {vendors?.map((vendor) => (
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          {vendor.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -260,16 +272,17 @@ const Products = () => {
                     Category*
                   </Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => handleSelectChange("category", value)}
+                    value={formData.category_id}
+                    onValueChange={(value) => handleSelectChange("category_id", value)}
+                    disabled={categoriesLoading}
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -297,7 +310,7 @@ const Products = () => {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="rate" className="text-right">
-                    Rate ($)
+                    Rate (₹)
                   </Label>
                   <Input
                     id="rate"
@@ -323,21 +336,28 @@ const Products = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="minStock" className="text-right">
+                  <Label htmlFor="min_stock" className="text-right">
                     Min Stock
                   </Label>
                   <Input
-                    id="minStock"
-                    name="minStock"
+                    id="min_stock"
+                    name="min_stock"
                     type="number"
-                    value={formData.minStock}
+                    value={formData.min_stock}
                     onChange={handleInputChange}
                     className="col-span-3"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={handleAddProduct}>
+                <Button 
+                  type="submit" 
+                  onClick={handleAddProduct}
+                  disabled={createProductMutation.isPending}
+                >
+                  {createProductMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
                   Add Product
                 </Button>
               </DialogFooter>
@@ -355,7 +375,7 @@ const Products = () => {
                 Product Inventory
               </CardTitle>
               <CardDescription>
-                {filteredProducts.length} products total
+                {productsLoading ? "Loading..." : `${filteredProducts.length} products total`}
               </CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
@@ -379,55 +399,104 @@ const Products = () => {
                   <TableHead>Vendor</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Unit</TableHead>
-                  <TableHead>Rate ($)</TableHead>
+                  <TableHead>Rate (₹)</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product, index) => {
-                  const stockStatus = getStockStatus(product.quantity, product.minStock);
-                  return (
-                    <TableRow key={product.id} className="hover:bg-primary/5">
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {product.quantity <= product.minStock && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                          )}
-                          {product.description}
-                        </div>
-                      </TableCell>
-                      <TableCell>{product.vendor}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{product.category}</Badge>
-                      </TableCell>
-                      <TableCell>{product.unit}</TableCell>
-                      <TableCell>{product.rate.toFixed(2)}</TableCell>
-                      <TableCell className="font-medium">{product.quantity}</TableCell>
-                      <TableCell>
-                        <Badge variant={stockStatus.variant}>
-                          {stockStatus.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openEditDialog(product)}
-                          >
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Restock
-                          </Button>
-                        </div>
-                      </TableCell>
+                {productsLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
                     </TableRow>
-                  );
-                })}
+                  ))
+                ) : filteredProducts.length > 0 ? (
+                  filteredProducts.map((product, index) => {
+                    const stockStatus = getStockStatus(product.quantity, product.min_stock);
+                    return (
+                      <TableRow key={product.id} className="hover:bg-primary/5">
+                        <TableCell className="font-medium">{index + 1}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {product.quantity <= product.min_stock && (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            )}
+                            {product.description}
+                          </div>
+                        </TableCell>
+                        <TableCell>{product.vendor?.name || 'Unknown'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{product.category?.name || 'Unknown'}</Badge>
+                        </TableCell>
+                        <TableCell>{product.unit}</TableCell>
+                        <TableCell>{formatCurrency(product.rate)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{product.quantity}</span>
+                            <Badge 
+                              variant={product.quantity <= product.min_stock ? "destructive" : "outline"}
+                              className="text-xs"
+                            >
+                              {product.quantity <= product.min_stock ? "Low Stock" : "In Stock"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={stockStatus.variant}>
+                            {stockStatus.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleEditProduct(product)}
+                                className="cursor-pointer"
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setCurrentProduct(product);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                                className="cursor-pointer text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                      No products found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -435,21 +504,25 @@ const Products = () => {
       </Card>
 
       {/* Edit Product Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          resetForm();
+          setCurrentProduct(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Product</DialogTitle>
             <DialogDescription>
-              Update the details for this inventory product
+              Update the product information
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">
-                Description*
-              </Label>
+              <Label htmlFor="edit_description" className="text-right">Product*</Label>
               <Input
-                id="edit-description"
+                id="edit_description"
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
@@ -457,49 +530,45 @@ const Products = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-vendor" className="text-right">
-                Vendor*
-              </Label>
+              <Label htmlFor="edit_vendor" className="text-right">Vendor*</Label>
               <Select
-                value={formData.vendor}
-                onValueChange={(value) => handleSelectChange("vendor", value)}
+                value={formData.vendor_id}
+                onValueChange={(value) => handleSelectChange("vendor_id", value)}
+                disabled={vendorsLoading}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select vendor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor} value={vendor}>
-                      {vendor}
+                  {vendors?.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-category" className="text-right">
-                Category*
-              </Label>
+              <Label htmlFor="edit_category" className="text-right">Category*</Label>
               <Select
-                value={formData.category}
-                onValueChange={(value) => handleSelectChange("category", value)}
+                value={formData.category_id}
+                onValueChange={(value) => handleSelectChange("category_id", value)}
+                disabled={categoriesLoading}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categories?.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-unit" className="text-right">
-                Unit*
-              </Label>
+              <Label htmlFor="edit_unit" className="text-right">Unit*</Label>
               <Select
                 value={formData.unit}
                 onValueChange={(value) => handleSelectChange("unit", value)}
@@ -517,11 +586,9 @@ const Products = () => {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-rate" className="text-right">
-                Rate ($)
-              </Label>
+              <Label htmlFor="edit_rate" className="text-right">Rate (₹)</Label>
               <Input
-                id="edit-rate"
+                id="edit_rate"
                 name="rate"
                 type="number"
                 step="0.01"
@@ -531,11 +598,9 @@ const Products = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-quantity" className="text-right">
-                Quantity
-              </Label>
+              <Label htmlFor="edit_quantity" className="text-right">Quantity</Label>
               <Input
-                id="edit-quantity"
+                id="edit_quantity"
                 name="quantity"
                 type="number"
                 value={formData.quantity}
@@ -544,26 +609,61 @@ const Products = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-minStock" className="text-right">
-                Min Stock
-              </Label>
+              <Label htmlFor="edit_min_stock" className="text-right">Min Stock</Label>
               <Input
-                id="edit-minStock"
-                name="minStock"
+                id="edit_min_stock"
+                name="min_stock"
                 type="number"
-                value={formData.minStock}
+                value={formData.min_stock}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" onClick={handleEditProduct}>
+            <Button 
+              onClick={handleUpdateProduct}
+              disabled={updateProductMutation.isPending}
+            >
+              {updateProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
               Update Product
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                This action will deactivate the product. This cannot be undone.
+                {currentProduct && (
+                  <div className="mt-2 p-2 bg-muted rounded text-sm">
+                    <strong>Product:</strong> {currentProduct.description}
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProduct}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
