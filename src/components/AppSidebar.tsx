@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, Package, Warehouse, ClipboardList, Waves } from "lucide-react";
+import { LayoutDashboard, Package, Warehouse, ClipboardList, Waves, Users } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -18,6 +18,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Products", url: "/products", icon: Package },
+  { title: "Staff", url: "/staff", icon: Users },
   { title: "Inventory Usage", url: "/inventory-usage", icon: ClipboardList },
   { title: "Inventory", url: "/inventory", icon: Warehouse },
 ];

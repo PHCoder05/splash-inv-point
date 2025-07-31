@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { sampleStaff } from "./Staff";
 
 // Define interfaces
 interface Product {
@@ -67,9 +68,7 @@ const InventoryUsage = () => {
   ]);
   
   // People and departments for dropdowns
-  const people = [
-    "John Smith", "Sarah Johnson", "Mike Wilson", "Lisa Chen", "Vikrant", "David Thompson", "Maria Garcia"
-  ];
+  const people = sampleStaff.map(staff => `${staff.firstName} ${staff.lastName}`);
   
   const departments = [
     "Pool Operations", "Guest Services", "Safety", "Recreation", "Maintenance", "Funworld", "waterworld"
