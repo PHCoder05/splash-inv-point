@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,17 +11,12 @@ import {
   ClipboardList, 
   Search, 
   Calendar, 
-  User, 
-  Building, 
   Filter,
   Download,
   Plus,
   AlertTriangle,
   Loader2,
   AlertCircle,
-  TrendingDown,
-  Package,
-  CheckCircle,
   Pencil,
   Trash2,
   MoreHorizontal
@@ -48,7 +43,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -70,36 +64,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
-<<<<<<< HEAD
-import { sampleStaff } from "./Staff";
-
-// Define interfaces
-interface Product {
-  id: number;
-  description: string;
-  rate: number;
-  unit: string;
-  stock: number;
-  vendor: string;
-}
-
-interface UsageRecord {
-  id: number;
-  productId: number;
-  description: string;
-  unit: string;
-  vendor: string;
-  quantity: number;
-  person: string;
-  department: string;
-  date: Date;
-  purpose: string;
-}
-=======
 import type { CreateUsageRecordForm } from "@/types/database";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
->>>>>>> 840a99ca01108c949332564d470d15d0d82be3c6
+ 
 
 const InventoryUsage = () => {
   // Database queries
@@ -108,31 +75,6 @@ const InventoryUsage = () => {
   const { data: people } = usePeople();
   const { data: departments } = useDepartments();
   
-<<<<<<< HEAD
-  // Products data
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, description: "Pool Noodles", rate: 5.99, unit: "PCS", stock: 150, vendor: "AquaSupplies Inc" },
-    { id: 2, description: "Sunscreen SPF 50", rate: 12.99, unit: "BTL", stock: 45, vendor: "SafeSun Products" },
-    { id: 3, description: "Pool Towels", rate: 15.99, unit: "PCS", stock: 80, vendor: "TextilePro" },
-    { id: 4, description: "Pool Floats", rate: 25.99, unit: "PCS", stock: 12, vendor: "AquaSupplies Inc" },
-    { id: 5, description: "Water Bottle", rate: 3.99, unit: "PCS", stock: 200, vendor: "HydroGoods" },
-    { id: 6, description: "16\" Wall Fan CG", rate: 1950.00, unit: "NOS", stock: 5, vendor: "M.M Switchgear" },
-    { id: 7, description: "400mm x 7.6mm Cable Ties", rate: 390.00, unit: "Pkt", stock: 6, vendor: "M.M Switchgear" },
-    { id: 8, description: "530mm X 7.6mm Cable Ties", rate: 525.00, unit: "PKT", stock: 2, vendor: "M.M Switchgear" },
-    { id: 9, description: "LED Rope Light Serial Set", rate: 8675.00, unit: "Box", stock: 3, vendor: "M.M Switchgear" },
-    { id: 10, description: "Spare Adaptor for LED Rope", rate: 180.00, unit: "Nos", stock: 4, vendor: "M.M Switchgear" }
-  ]);
-  
-  // People and departments for dropdowns
-  const people = sampleStaff.map(staff => `${staff.firstName} ${staff.lastName}`);
-  
-  const departments = [
-    "Pool Operations", "Guest Services", "Safety", "Recreation", "Maintenance", "Funworld", "waterworld"
-  ];
-  
-  // State for form
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-=======
   // Mutations
   const createUsageMutation = useCreateUsageRecord();
   const updateUsageMutation = useUpdateUsageRecord();
@@ -147,7 +89,6 @@ const InventoryUsage = () => {
 
   // Form state for add
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
->>>>>>> 840a99ca01108c949332564d470d15d0d82be3c6
   const [quantity, setQuantity] = useState<number>(1);
   const [person, setPerson] = useState<string>("");
   const [department, setDepartment] = useState<string>("");
