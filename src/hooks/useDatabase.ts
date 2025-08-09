@@ -141,6 +141,85 @@ export const usePeople = () => {
   });
 };
 
+export const useCreatePerson = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (person: { name: string; email?: string | null; phone?: string | null; department_id?: string | null; is_active?: boolean }) => {
+      const { data, error } = await db.people.create(person);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      toast({ title: 'Success', description: 'Staff member added successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to add staff member', variant: 'destructive' });
+    }
+  });
+};
+
+export const useUpdatePerson = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<{ name: string; email: string | null; phone: string | null; department_id: string | null; is_active: boolean }> }) => {
+      const { data: result, error } = await db.people.update(id, data);
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      toast({ title: 'Success', description: 'Staff member updated successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to update staff member', variant: 'destructive' });
+    }
+  });
+};
+
+export const useSetPersonActive = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const { data, error } = await db.people.setActive(id, isActive);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      toast({ title: 'Success', description: 'Staff status updated' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to update staff status', variant: 'destructive' });
+    }
+  });
+};
+
+export const useDeletePerson = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await db.people.delete(id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      toast({ title: 'Success', description: 'Staff member deleted' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to delete staff member', variant: 'destructive' });
+    }
+  });
+};
+
 // Inventory Transactions hooks
 export const useInventoryTransactions = () => {
   return useQuery({

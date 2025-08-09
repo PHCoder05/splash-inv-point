@@ -1,11 +1,11 @@
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Users, AlertTriangle } from "lucide-react";
+import { Search, Plus, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,131 +17,56 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-
-interface Staff {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  department: string;
-  position: string;
-  hireDate: Date;
-  status: 'active' | 'inactive';
-  employeeId: string;
-}
-
-export const sampleStaff: Staff[] = [
-  {
-    id: 1,
-    firstName: "John",
-    lastName: "Smith",
-    email: "john.smith@waterpark.com",
-    phone: "+1-555-0123",
-    department: "Pool Operations",
-    position: "Manager",
-    hireDate: new Date("2023-01-15"),
-    status: "active",
-    employeeId: "EMP001"
-  },
-  {
-    id: 2,
-    firstName: "Sarah",
-    lastName: "Johnson",
-    email: "sarah.johnson@waterpark.com",
-    phone: "+1-555-0124",
-    department: "Guest Services",
-    position: "Supervisor",
-    hireDate: new Date("2022-05-20"),
-    status: "active",
-    employeeId: "EMP002"
-  },
-  {
-    id: 3,
-    firstName: "Mike",
-    lastName: "Wilson",
-    email: "mike.wilson@waterpark.com",
-    phone: "+1-555-0125",
-    department: "Safety",
-    position: "Lifeguard",
-    hireDate: new Date("2023-06-01"),
-    status: "active",
-    employeeId: "EMP003"
-  },
-  {
-    id: 4,
-    firstName: "Lisa",
-    lastName: "Chen",
-    email: "lisa.chen@waterpark.com",
-    phone: "+1-555-0126",
-    department: "Recreation",
-    position: "Staff Member",
-    hireDate: new Date("2023-03-10"),
-    status: "inactive",
-    employeeId: "EMP004"
-  },
-  {
-    id: 5,
-    firstName: "David",
-    lastName: "Thompson",
-    email: "david.thompson@waterpark.com",
-    phone: "+1-555-0127",
-    department: "Maintenance",
-    position: "Maintenance Technician",
-    hireDate: new Date("2021-11-22"),
-    status: "active",
-    employeeId: "EMP005"
-  },
-  {
-    id: 6,
-    firstName: "Maria",
-    lastName: "Garcia",
-    email: "maria.garcia@waterpark.com",
-    phone: "+1-555-0128",
-    department: "Food & Beverage",
-    position: "Food Service Worker",
-    hireDate: new Date("2024-02-18"),
-    status: "active",
-    employeeId: "EMP006"
-  }
-];
+import { useCreatePerson, useDepartments, usePeople, useSetPersonActive, useUpdatePerson, useDeletePerson } from "@/hooks/useDatabase";
+import type { Department, Person } from "@/types/database";
 
 const Staff = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
-  const [staffList, setStaffList] = useState<Staff[]>(sampleStaff);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Person | null>(null);
+  const [currentPerson, setCurrentPerson] = useState<Person | null>(null);
 
-  const [formData, setFormData] = useState<Omit<Staff, 'id' | 'hireDate'> & { hireDate: Date | undefined }>({
-    firstName: "",
-    lastName: "",
+  const { data: people, isLoading: isPeopleLoading } = usePeople();
+  const { data: depts } = useDepartments();
+  const createPerson = useCreatePerson();
+  const updatePerson = useUpdatePerson();
+  const setPersonActive = useSetPersonActive();
+  const deletePerson = useDeletePerson();
+
+  const departments = useMemo(() => (depts || []).map((d: Department) => ({ id: d.id, name: d.name })), [depts]);
+
+  const [formData, setFormData] = useState<{ name: string; email: string; phone: string; department_id: string | null; is_active: 'active' | 'inactive' }>({
+    name: "",
     email: "",
     phone: "",
-    department: "",
-    position: "",
-    hireDate: undefined,
-    status: 'active',
-    employeeId: ''
+    department_id: null,
+    is_active: 'active'
   });
 
-  const departments = [
-    "Pool Operations", "Guest Services", "Safety", "Recreation", "Maintenance", "Funworld", "waterworld", "Administration", "Food & Beverage", "Retail"
-  ];
-  const positions = [
-    "Manager", "Supervisor", "Staff Member", "Lifeguard", "Maintenance Technician", "Guest Service Representative", "Food Service Worker", "Retail Associate", "Administrator"
-  ];
-
-  const filteredStaff = staffList.filter(staff =>
-    `${staff.firstName} ${staff.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    staff.position.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPeople = useMemo(() => {
+    const list = people || [];
+    return list.filter((p) => {
+      const departmentName = (p as any).department?.name || "";
+      return (
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        departmentName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+  }, [people, searchTerm]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -151,75 +76,70 @@ const Staff = () => {
   const handleSelectChange = (name: string, value: string) => {
     setFormData({ ...formData, [name]: value });
   };
-  
-  const handleDateChange = (date: Date | undefined) => {
-    if (date) {
-      setFormData({ ...formData, hireDate: date });
-    }
-  };
 
   const validateForm = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.department || !formData.position || !formData.employeeId) {
-      toast({ title: "Missing Fields", description: "Please fill in all required fields.", variant: "destructive" });
+    if (!formData.name) {
+      toast({ title: "Missing Fields", description: "Please enter name.", variant: "destructive" });
       return false;
     }
-    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+    if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
       return false;
     }
     return true;
   }
 
-  const handleAddStaff = () => {
+  const handleAddStaff = async () => {
     if (!validateForm()) return;
 
-    if (staffList.some(staff => staff.employeeId === formData.employeeId)) {
-      toast({ title: "Duplicate Employee ID", description: "An employee with this ID already exists.", variant: "destructive" });
-      return;
-    }
-
-    const newStaff: Staff = {
-      id: staffList.length + 1,
-      ...formData,
-      hireDate: formData.hireDate || new Date(),
+    const payload = {
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      department_id: formData.department_id || null,
+      is_active: formData.is_active === 'active',
     };
-    setStaffList([...staffList, newStaff]);
-    toast({ title: "Staff Added", description: `${newStaff.firstName} ${newStaff.lastName} has been added.` });
+    await createPerson.mutateAsync(payload);
     setIsAddDialogOpen(false);
     resetFormData();
   };
 
-  const handleEditStaff = () => {
-    if (!currentStaff || !validateForm()) return;
-    
-    if (staffList.some(staff => staff.employeeId === formData.employeeId && staff.id !== currentStaff.id)) {
-      toast({ title: "Duplicate Employee ID", description: "An employee with this ID already exists.", variant: "destructive" });
-      return;
-    }
+  const handleEditStaff = async () => {
+    if (!currentPerson || !validateForm()) return;
 
-    const updatedStaff: Staff = {
-      id: currentStaff.id,
-      ...formData,
-      hireDate: formData.hireDate || currentStaff.hireDate,
-    };
-    setStaffList(staffList.map(staff => staff.id === currentStaff.id ? updatedStaff : staff));
-    toast({ title: "Staff Updated", description: `${updatedStaff.firstName} ${updatedStaff.lastName}'s details have been updated.` });
+    await updatePerson.mutateAsync({
+      id: currentPerson.id,
+      data: {
+        name: formData.name,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        department_id: formData.department_id || null,
+        is_active: formData.is_active === 'active',
+      }
+    });
     setIsEditDialogOpen(false);
     resetFormData();
   };
 
-  const openEditDialog = (staff: Staff) => {
-    setCurrentStaff(staff);
+  const openEditDialog = (person: Person) => {
+    setCurrentPerson(person);
     setFormData({
-      ...staff,
-      hireDate: staff.hireDate,
+      name: person.name,
+      email: person.email || "",
+      phone: person.phone || "",
+      department_id: person.department_id || null,
+      is_active: person.is_active ? 'active' : 'inactive',
     });
     setIsEditDialogOpen(true);
   };
 
   const resetFormData = () => {
     setFormData({
-      firstName: "", lastName: "", email: "", phone: "", department: "", position: "", hireDate: undefined, status: 'active', employeeId: ''
+      name: "",
+      email: "",
+      phone: "",
+      department_id: null,
+      is_active: 'active',
     });
   }
 
@@ -244,19 +164,14 @@ const Staff = () => {
                 <DialogDescription>Enter the details for the new staff member.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                {/* Form fields */}
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="firstName" className="text-right">First Name*</Label><Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="lastName" className="text-right">Last Name*</Label><Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="email" className="text-right">Email*</Label><Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="employeeId" className="text-right">Employee ID*</Label><Input id="employeeId" name="employeeId" value={formData.employeeId} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="department" className="text-right">Department*</Label><Select value={formData.department} onValueChange={(v) => handleSelectChange("department", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="position" className="text-right">Position*</Label><Select value={formData.position} onValueChange={(v) => handleSelectChange("position", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select position" /></SelectTrigger><SelectContent>{positions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name*</Label><Input id="name" name="name" value={formData.name} onChange={handleInputChange} className="col-span-3" /></div>
+              <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="email" className="text-right">Email</Label><Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="col-span-3" /></div>
                 <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="phone" className="text-right">Phone</Label><Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Hire Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="col-span-3 justify-start text-left font-normal">{formData.hireDate ? format(formData.hireDate, "PPP") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.hireDate} onSelect={handleDateChange} initialFocus /></PopoverContent></Popover></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="status" className="text-right">Status</Label><Select value={formData.status} onValueChange={(v) => handleSelectChange("status", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="department_id" className="text-right">Department</Label><Select value={formData.department_id ?? ""} onValueChange={(v) => handleSelectChange("department_id", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="is_active" className="text-right">Status</Label><Select value={formData.is_active} onValueChange={(v) => handleSelectChange("is_active", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></div>
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={handleAddStaff}>Add Staff</Button>
+                <Button type="submit" onClick={handleAddStaff} disabled={createPerson.isPending}>Add Staff</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -268,7 +183,7 @@ const Staff = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Staff List</CardTitle>
-              <CardDescription>{filteredStaff.length} staff members found</CardDescription>
+              <CardDescription>{filteredPeople.length} staff members found</CardDescription>
             </div>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -281,34 +196,43 @@ const Staff = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Employee ID</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Hire Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredStaff.map((staff) => (
-                  <TableRow key={staff.id} className="hover:bg-primary/5 hover-lift transition-all">
-                    <TableCell className="font-medium">{staff.employeeId}</TableCell>
-                    <TableCell>{`${staff.firstName} ${staff.lastName}`}</TableCell>
-                    <TableCell>{staff.email}</TableCell>
-                    <TableCell><Badge variant="outline">{staff.department}</Badge></TableCell>
-                    <TableCell>{staff.position}</TableCell>
-                    <TableCell>{format(staff.hireDate, "PP")}</TableCell>
-                    <TableCell><Badge variant={staff.status === 'active' ? 'default' : 'secondary'}>{staff.status}</Badge></TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => openEditDialog(staff)} className="hover:scale-105">Edit</Button>
-                    </TableCell>
+                {isPeopleLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5}>Loading...</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredPeople.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-primary/5 hover-lift transition-all">
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.email}</TableCell>
+                      <TableCell><Badge variant="outline">{(p as any).department?.name ?? '-'}</Badge></TableCell>
+                      <TableCell><Badge variant={p.is_active ? 'default' : 'secondary'}>{p.is_active ? 'active' : 'inactive'}</Badge></TableCell>
+                      <TableCell className="space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditDialog(p)} className="hover:scale-105">Edit</Button>
+                        <Button variant={p.is_active ? 'secondary' : 'default'} size="sm" onClick={() => setPersonActive.mutate({ id: p.id, isActive: !p.is_active })}>
+                          {p.is_active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => { setDeleteTarget(p); setIsDeleteDialogOpen(true); }}>
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
+          {!isPeopleLoading && filteredPeople.length === 0 && (
+            <div className="text-sm text-muted-foreground p-4">No staff found. Try a different search or add a new staff member.</div>
+          )}
         </CardContent>
       </Card>
 
@@ -320,21 +244,44 @@ const Staff = () => {
             <DialogDescription>Update the details for this staff member.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="firstName" className="text-right">First Name*</Label><Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="lastName" className="text-right">Last Name*</Label><Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="email" className="text-right">Email*</Label><Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="employeeId" className="text-right">Employee ID*</Label><Input id="employeeId" name="employeeId" value={formData.employeeId} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="department" className="text-right">Department*</Label><Select value={formData.department} onValueChange={(v) => handleSelectChange("department", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="position" className="text-right">Position*</Label><Select value={formData.position} onValueChange={(v) => handleSelectChange("position", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select position" /></SelectTrigger><SelectContent>{positions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="phone" className="text-right">Phone</Label><Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} className="col-span-3" /></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label className="text-right">Hire Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className="col-span-3 justify-start text-left font-normal">{formData.hireDate ? format(formData.hireDate, "PPP") : "Select date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.hireDate} onSelect={handleDateChange} initialFocus /></PopoverContent></Popover></div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="status" className="text-right">Status</Label><Select value={formData.status} onValueChange={(v) => handleSelectChange("status", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></div>
+            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="name" className="text-right">Name*</Label><Input id="name" name="name" value={formData.name} onChange={handleInputChange} className="col-span-3" /></div>
+            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="email" className="text-right">Email</Label><Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} className="col-span-3" /></div>
+            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="phone" className="text-right">Phone</Label><Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} className="col-span-3" /></div>
+            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="department_id" className="text-right">Department</Label><Select value={formData.department_id ?? ""} onValueChange={(v) => handleSelectChange("department_id", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select department" /></SelectTrigger><SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="is_active" className="text-right">Status</Label><Select value={formData.is_active} onValueChange={(v) => handleSelectChange("is_active", v)}><SelectTrigger className="col-span-3"><SelectValue placeholder="Select status" /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select></div>
           </div>
           <DialogFooter>
-            <Button type="submit" onClick={handleEditStaff}>Update Staff</Button>
+            <Button type="submit" onClick={handleEditStaff} disabled={updatePerson.isPending}>Update Staff</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete staff member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently remove the staff record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePerson.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (deleteTarget) {
+                  await deletePerson.mutateAsync(deleteTarget.id);
+                }
+                setIsDeleteDialogOpen(false);
+                setDeleteTarget(null);
+              }}
+              disabled={deletePerson.isPending}
+            >
+              {deletePerson.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

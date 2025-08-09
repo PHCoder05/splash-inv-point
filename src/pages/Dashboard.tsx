@@ -6,7 +6,8 @@ import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -261,41 +262,43 @@ const Dashboard = () => {
                 </div>
               ))
             ) : recentActivity && recentActivity.length > 0 ? (
-              recentActivity.map((activity, index) => (
-                <div 
-                  key={activity.id} 
-                  className="flex items-center justify-between p-3 rounded-xl bg-background/30 hover:bg-background/50 transition-all duration-300 border border-border/30 hover-lift"
-                  style={{animationDelay: `${800 + index * 100}ms`}}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activity.transaction_type === 'purchase' ? 'bg-green-500/10' : 'bg-blue-500/10'
-                    }`}>
-                      <Package className={`h-4 w-4 ${
-                        activity.transaction_type === 'purchase' ? 'text-green-600' : 'text-blue-600'
-                      }`} />
+              recentActivity.map((activity, index) => {
+                const type = activity.transaction_type;
+                const label = type === 'purchase' ? 'Purchase' : type === 'issue' ? 'Issue' : type === 'return' ? 'Return' : 'Adjustment';
+                const isIncrease = type === 'purchase' || type === 'return';
+                const color = type === 'adjustment' ? 'amber' : isIncrease ? 'green' : 'red';
+                const bgColor = color === 'green' ? 'bg-green-500/10' : color === 'red' ? 'bg-red-500/10' : 'bg-amber-500/10';
+                const textColor = color === 'green' ? 'text-green-600' : color === 'red' ? 'text-red-600' : 'text-amber-600';
+                const sign = type === 'adjustment' ? '' : isIncrease ? '+' : '-';
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-background/30 hover:bg-background/50 transition-all duration-300 border border-border/30 hover-lift"
+                    style={{ animationDelay: `${800 + index * 100}ms` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${bgColor}`}>
+                        <Package className={`h-4 w-4 ${textColor}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {activity.product?.description || 'Unknown Product'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {activity.transaction_type === 'purchase' ? 'Purchase' : 'Transaction'}
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${textColor}`}>
+                        {sign}
+                        {activity.quantity}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {activity.product?.description || 'Unknown Product'}
+                        {format(new Date(activity.transaction_date), 'MMM dd')}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${
-                      activity.transaction_type === 'purchase' ? 'text-green-600' : 'text-blue-600'
-                    }`}>
-                      +{activity.quantity}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(activity.transaction_date), 'MMM dd')}
-                    </p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
@@ -318,24 +321,29 @@ const Dashboard = () => {
           <CardDescription>Frequently used functions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             {[
               { icon: Package, label: "Add Product", color: "primary", href: "/products" },
               { icon: ShoppingCart, label: "Record Purchase", color: "accent", href: "/inventory" },
               { icon: Warehouse, label: "Issue Items", color: "secondary", href: "/inventory-usage" },
               { icon: TrendingUp, label: "View Reports", color: "primary", href: "/products" }
             ].map((action, index) => (
-              <button 
-                key={index}
-                className="btn-glass group text-center hover:scale-105 animate-fade-up"
-                style={{animationDelay: `${900 + index * 100}ms`}}
-                onClick={() => window.location.href = action.href}
-              >
-                <div className={`mx-auto mb-3 p-3 rounded-xl bg-${action.color}/10 group-hover:bg-${action.color}/20 transition-colors`}>
-                  <action.icon className={`h-6 w-6 text-${action.color}`} />
-                </div>
-                <p className="text-sm font-medium">{action.label}</p>
-              </button>
+              <Tooltip key={index}>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={action.href}
+                    aria-label={action.label}
+                    className="btn-glass group text-center hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl animate-fade-up transition-transform active:scale-95"
+                    style={{ animationDelay: `${900 + index * 100}ms` }}
+                  >
+                    <div className={`mx-auto mb-3 p-3 rounded-xl bg-${action.color}/10 group-hover:bg-${action.color}/20 transition-colors`}>
+                      <action.icon className={`h-6 w-6 text-${action.color}`} />
+                    </div>
+                    <p className="text-sm font-medium">{action.label}</p>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="top">{action.label}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
         </CardContent>
@@ -343,18 +351,19 @@ const Dashboard = () => {
 
       {/* Quick Actions FAB */}
       <div className="fixed bottom-6 right-6 z-50">
-        <div className="relative group">
-          <Button
-            size="lg"
-            className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-lg hover:shadow-xl transition-all duration-300 floating"
-            onClick={() => navigate('/inventory')}
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-          <div className="absolute bottom-16 right-0 bg-background/90 backdrop-blur-sm border rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            <p className="text-sm font-medium whitespace-nowrap">Quick Add Transaction</p>
-          </div>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="lg"
+              className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-lg hover:shadow-xl transition-all duration-300 floating"
+              onClick={() => navigate('/inventory')}
+              aria-label="Quick Add Transaction"
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Quick Add Transaction</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

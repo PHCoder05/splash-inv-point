@@ -104,8 +104,57 @@ export const db = {
         *,
         department: departments(*)
       `)
-      .eq('is_active', true)
       .order('name'),
+
+    create: (data: {
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      department_id?: string | null;
+      is_active?: boolean;
+    }) =>
+      supabase
+        .from('people')
+        .insert({
+          name: data.name,
+          email: data.email ?? null,
+          phone: data.phone ?? null,
+          department_id: data.department_id ?? null,
+          is_active: data.is_active ?? true,
+        })
+        .select()
+        .single(),
+
+    update: (
+      id: string,
+      data: Partial<{
+        name: string;
+        email: string | null;
+        phone: string | null;
+        department_id: string | null;
+        is_active: boolean;
+      }>
+    ) =>
+      supabase
+        .from('people')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single(),
+
+    setActive: (id: string, isActive: boolean) =>
+      supabase
+        .from('people')
+        .update({ is_active: isActive })
+        .eq('id', id)
+        .select()
+        .single(),
+
+    delete: (id: string) =>
+      supabase
+        .from('people')
+        .delete()
+        .eq('id', id),
   },
 
   // Inventory Transactions
@@ -249,7 +298,7 @@ export const db = {
         transaction_type,
         quantity,
         transaction_date,
-        products (description)
+        product:products (description)
       `)
       .order('created_at', { ascending: false })
       .limit(10),
